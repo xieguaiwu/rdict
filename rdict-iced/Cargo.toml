@@ -1,0 +1,22 @@
+[package]
+name = "rdict_iced"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[[bin]]
+name = "rdict-iced"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.98"
+iced = { version = "0.14.0", features = ["tokio"] }
+tokio = "1.46.0"
+rdict_core = { path = "../rdict-core" }
+directories-next = "2.0.0"
+dark-light = "2.0.0"
+winapi = { version = "0.3.9", features = ["wincon"] }

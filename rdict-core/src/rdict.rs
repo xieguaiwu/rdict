@@ -11,6 +11,8 @@ use std::fs;
 
 type CacheVariant = (&'static str, fn(String) -> Result<TranslationData, Error>);
 
+#[derive(Debug, Clone)]
+
 pub struct Rdict {
     client: Client,
     base_url: String,
@@ -27,6 +29,7 @@ pub enum Format {
     Json,
 }
 
+#[derive(Debug, Clone)]
 pub struct FetchedResult {
     pub data: TranslationData,
     pub is_cached: bool,

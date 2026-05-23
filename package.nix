@@ -18,6 +18,12 @@ rec {
 
     pname = "rdict";
 
+<<<<<<< HEAD
+=======
+    useFetchCargoVendor = true;
+    cargoHash = "sha256-QeMkIN3DeQWICbx7qliGJuGLb2B+QOW6JsLX0KU/nro=";
+
+>>>>>>> 25a189b (feat(rdict-iced): init)
     buildAndTestSubdir = "./rdict-cli";
 
     nativeBuildInputs = lib.optionals (stdenv.buildPlatform.canExecute stdenv.hostPlatform) [
@@ -47,6 +53,12 @@ rec {
       writableTmpDirAsHomeHook
     ];
 
+<<<<<<< HEAD
+=======
+    useFetchCargoVendor = true;
+    cargoHash = "sha256-QeMkIN3DeQWICbx7qliGJuGLb2B+QOW6JsLX0KU/nro=";
+
+>>>>>>> 25a189b (feat(rdict-iced): init)
     buildAndTestSubdir = "./rdict-telegram";
 
     meta = {

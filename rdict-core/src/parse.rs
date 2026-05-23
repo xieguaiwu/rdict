@@ -2,25 +2,25 @@ use crate::Error;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Pronunciation {
     pub uk: Option<String>,
     pub us: Option<String>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Example {
     pub en: String,
     pub zh: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Meaning {
     pub part_of_speech: Option<String>,
     pub definitions: Vec<String>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct ToChinese {
     pub input_text: String,
     pub pronunciation: Pronunciation,
@@ -28,14 +28,14 @@ pub struct ToChinese {
     pub examples: Vec<Example>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct ToEnglish {
     pub input_text: String,
     pub meanings: Vec<String>,
     pub examples: Vec<Example>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum TranslationData {
     #[serde(rename = "to_chinese")]
@@ -59,6 +59,7 @@ mod selectors {
     use super::Selector;
 
     pub static BODY_SELECTOR:                   LazyLock<Selector> = selector!(".search_result-dict");
+    pub static WORD_SELECTOR:                   LazyLock<Selector> = selector!(".word-head .title");
     pub static PRONUNCIATION_SELECTOR:          LazyLock<Selector> = selector!(".phone_con .per-phone .phonetic");
     pub static MEANINGS_SELECTOR:               LazyLock<Selector> = selector!(".trans-container .basic .word-exp");
     pub static DEFINITIONS_SELECTOR:            LazyLock<Selector> = selector!(".trans");
