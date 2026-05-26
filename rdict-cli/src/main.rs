@@ -13,6 +13,7 @@ use log::info;
 use owo_colors::OwoColorize;
 use rdict_core::parse::TranslationData;
 use rdict_core::rdict::{self, Format, Rdict};
+use rdict_core::german::WoerterNetSource;
 use rustyline::DefaultEditor;
 use std::env;
 use std::io::{self, IsTerminal, Read};
@@ -20,25 +21,22 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 struct App {
-    /// Format used to output translation data
     format: Format,
-    /// Rdict client
     client: Rdict,
-    /// Command-line arguments handled by `clap`
-    cli: Args,
+    query: String,
 }
 
 impl App {
-    /// Initializes the `rdict_cli` application
     async fn new(cli: Args) -> Result<Self> {
         let format = if cli.json {
             Format::Json
-        } else if console::colors_enabled() {
-            Format::MarkdownColored
         } else {
-            Format::Markdown
+            Format::Markdown {
+                colored: console::colors_enabled(),
+            }
         };
 
+        let query = cli.input_text.join(" ");
         let db_path: Option<PathBuf> = if cli.no_cache {
             None
         } else {
@@ -47,52 +45,51 @@ impl App {
             Some(proj_dirs.cache_dir().join("cache.db"))
         };
 
-        let client = Rdict::new("https://m.youdao.com", db_path).await?;
+        use crate::args::DictionarySource;
+
+        let client = match cli.source {
+            DictionarySource::Youdao => {
+                Rdict::new("https://m.youdao.com", db_path).await?
+            }
+            DictionarySource::WoerterNet => {
+                let source = Box::new(WoerterNetSource::new("https://www.verbformen.com"));
+                Rdict::with_source(source, db_path).await?
+            }
+        };
 
         Ok(Self {
             format,
             client,
-            cli,
+            query,
         })
     }
 
-    /// Runs `rdict_cli`
-    ///
-    /// Enters interactive mode if `input_text` is not provided by command-line argument or piping.
     async fn run(&self) -> Result<()> {
         let stdin_is_piped = !io::stdin().is_terminal();
-        let query = &self.cli.input_text.join(" ");
 
-        match &self.cli.input_text.len() {
-            1.. => {
-                info!("`input_text` provided through argument.");
-                self.output_results(query).await?;
-            }
-            0 if stdin_is_piped => {
-                info!("`input_text` provided through pipe.");
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                let input_text = buffer.trim();
-                ensure!(!input_text.is_empty(), "No input_text specified");
-                self.output_results(input_text).await?;
-            }
-            0 => {
-                info!("`input_text` not provided, entering interactive mode.");
-                self.interactive_mode()
-                    .await
-                    .context("Interactive mode failed")?;
-            }
+        if !self.query.is_empty() {
+            info!("`input_text` provided through argument.");
+            self.output_results(&self.query).await?;
+        } else if stdin_is_piped {
+            info!("`input_text` provided through pipe.");
+            let mut buffer = String::new();
+            io::stdin().read_to_string(&mut buffer)?;
+            let input_text = buffer.trim();
+            ensure!(!input_text.is_empty(), "No input_text specified");
+            self.output_results(input_text).await?;
+        } else {
+            info!("`input_text` not provided, entering interactive mode.");
+            self.interactive_mode()
+                .await
+                .context("Interactive mode failed")?;
         }
 
         Ok(())
     }
 
-    /// Runs `rdict_cli` in interactive mode
     async fn interactive_mode(&self) -> rustyline::Result<()> {
         let mut rl = DefaultEditor::new()?;
         loop {
-            // HACK:
-            // I don't have a Windows machine to fix https://github.com/kkawakam/rustyline/issues/562
             let readline = if cfg!(target_family = "windows") || !console::colors_enabled() {
                 rl.readline("[rdict]# ")
             } else {
@@ -117,7 +114,6 @@ impl App {
         Ok(())
     }
 
-    /// Formats and outputs `input_text` in different format provided when initialized
     async fn output_results(&self, input_text: &str) -> Result<()> {
         let spinner = supports_ansi().then(|| {
             let spinner = ProgressBar::new_spinner();
@@ -140,22 +136,13 @@ impl App {
             spinner.finish_and_clear();
         }
 
-        match self.format {
-            Format::MarkdownColored | Format::Markdown => {
-                let output = match (&self.format, &result.data) {
-                    (Format::MarkdownColored, TranslationData::ToChinese(tc)) => {
-                        rdict::render_chinese_colored(tc)
-                    }
-                    (Format::MarkdownColored, TranslationData::ToEnglish(te)) => {
-                        rdict::render_english_colored(te)
-                    }
-                    (Format::Markdown, TranslationData::ToChinese(tc)) => {
-                        rdict::render_chinese_plain(tc)
-                    }
-                    (Format::Markdown, TranslationData::ToEnglish(te)) => {
-                        rdict::render_english_plain(te)
-                    }
-                    _ => unreachable!(),
+        match &self.format {
+            Format::Markdown { colored } => {
+                let is_colored = *colored;
+                let output = match &result.data {
+                    TranslationData::ToChinese(tc) => rdict::render_chinese(tc, is_colored),
+                    TranslationData::ToEnglish(te) => rdict::render_english(te, is_colored),
+                    TranslationData::German(ge) => rdict::render_german_entry(ge, is_colored),
                 };
 
                 let mut indented_output = output
@@ -173,11 +160,9 @@ impl App {
 
                 let indented_output = format!("\n{indented_output}\n");
 
-                // If window is too small, output the result in a pager
                 let (_, height) =
                     crossterm::terminal::size().context("Failed to get terminal size")?;
-                // NOTE: Removed 4 lines for shell prompt.
-                if height - 4 < indented_output.lines().count() as u16 {
+                if height > 4 && height - 4 < indented_output.lines().count() as u16 {
                     let mut terminal = ratatui::init();
                     (pager::Pager {
                         text: indented_output,

@@ -1,16 +1,25 @@
 #![forbid(unsafe_code)]
 
+pub mod german;
 pub mod parse;
 pub mod rdict;
+pub mod source;
+pub mod youdao;
 
 use std::path::PathBuf;
 use thiserror::Error;
 
+/// Check if text contains CJK (Chinese, Japanese, Korean) characters
+///
+/// Used to determine whether to route to English→Chinese or Chinese→English parsing
+/// for the Youdao source. The CJK range covers common CJK Unified Ideographs.
+pub(crate) fn is_cjk(text: &str) -> bool {
+    text.chars()
+        .any(|ch| ('\u{4E00}'..='\u{9FFF}').contains(&ch))
+}
+
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Input text is empty")]
-    EmptyInput,
-
     #[error("Invalid UTF-8 database path: {0}")]
     InvalidDatabasePath(PathBuf),
 
@@ -20,7 +29,6 @@ pub enum Error {
     #[error("Failed to parse response: {0}")]
     Parse(String),
 
-    // Third Party
     #[error("HTTP request failed: {0}")]
     Http(#[from] reqwest::Error),
 

@@ -45,11 +45,10 @@ impl Pager {
         match (key.code, key.modifiers) {
             (KeyCode::Char('q'), KeyModifiers::NONE) => self.exit(),
 
-            // FIXME: hardcoded value, replace 4 with screen height
             (KeyCode::Char('j'), KeyModifiers::NONE)
             | (KeyCode::Down, KeyModifiers::NONE)
             | (KeyCode::Char('n'), KeyModifiers::CONTROL)
-                if self.vertical_scroll + 4 < self.text.lines().count() =>
+                if self.vertical_scroll + 1 < self.text.lines().count() =>
             {
                 self.vertical_scroll += 1;
             }
@@ -75,7 +74,8 @@ impl Widget for &Pager {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let instructions = Line::from("[q] to quit, [j/k] to scroll up and down".on_blue().black());
         let block = Block::new().title_bottom(instructions);
-        let text: Text = self.text.clone().into_bytes().into_text().unwrap();
+        let text: Text = self.text.clone().into_bytes().into_text()
+            .expect("ansi_to_tui conversion failed");
 
         Paragraph::new(text)
             .scroll((self.vertical_scroll as u16, 0))

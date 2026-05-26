@@ -2682,7 +2682,6 @@ dependencies = [
  "ratatui",
  "rdict_core",
  "rustyline",
- "serde",
  "serde_json",
  "tokio",
 ]

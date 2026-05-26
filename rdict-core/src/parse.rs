@@ -1,3 +1,4 @@
+use crate::german::GermanEntry;
 use crate::Error;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
@@ -43,6 +44,9 @@ pub enum TranslationData {
 
     #[serde(rename = "to_english")]
     ToEnglish(ToEnglish),
+
+    #[serde(rename = "german")]
+    German(GermanEntry),
 }
 
 macro_rules! selector {
@@ -53,24 +57,24 @@ macro_rules! selector {
 }
 
 #[rustfmt::skip]
-mod selectors {
+pub(crate) mod selectors {
     use std::sync::LazyLock;
 
     use super::Selector;
 
-    pub static BODY_SELECTOR:                   LazyLock<Selector> = selector!(".search_result-dict");
-    pub static PRONUNCIATION_SELECTOR:          LazyLock<Selector> = selector!(".phone_con .per-phone .phonetic");
-    pub static MEANINGS_SELECTOR:               LazyLock<Selector> = selector!(".trans-container .basic .word-exp");
-    pub static DEFINITIONS_SELECTOR:            LazyLock<Selector> = selector!(".trans");
-    pub static PART_OF_SPEECH_SELECTOR:         LazyLock<Selector> = selector!(".pos");
-    pub static EXAMPLE_SELECTOR:                LazyLock<Selector> = selector!(".trans-container .mcols-layout .col2");
-    pub static EN_SELECTOR:                     LazyLock<Selector> = selector!(".sen-eng");
-    pub static ZH_SELECTOR:                     LazyLock<Selector> = selector!(".sen-ch");
-    pub static TO_ENGLISH_TRANSLATION_SELECTOR: LazyLock<Selector> = selector!(".trans-container .basic .col2 .point");
+    pub(crate) static BODY_SELECTOR:                   LazyLock<Selector> = selector!(".search_result-dict");
+    pub(crate) static PRONUNCIATION_SELECTOR:          LazyLock<Selector> = selector!(".phone_con .per-phone .phonetic");
+    pub(crate) static MEANINGS_SELECTOR:               LazyLock<Selector> = selector!(".trans-container .basic .word-exp");
+    pub(crate) static DEFINITIONS_SELECTOR:            LazyLock<Selector> = selector!(".trans");
+    pub(crate) static PART_OF_SPEECH_SELECTOR:         LazyLock<Selector> = selector!(".pos");
+    pub(crate) static EXAMPLE_SELECTOR:                LazyLock<Selector> = selector!(".trans-container .mcols-layout .col2");
+    pub(crate) static EN_SELECTOR:                     LazyLock<Selector> = selector!(".sen-eng");
+    pub(crate) static ZH_SELECTOR:                     LazyLock<Selector> = selector!(".sen-ch");
+    pub(crate) static TO_ENGLISH_TRANSLATION_SELECTOR: LazyLock<Selector> = selector!(".trans-container .basic .col2 .point");
 }
 
 /// Parses English, returns Chinese
-pub fn to_chinese(input_text: &str, html: &str) -> std::result::Result<ToChinese, Error> {
+pub(crate) fn to_chinese(input_text: &str, html: &str) -> std::result::Result<ToChinese, Error> {
     let binding = Html::parse_document(html);
     let document = binding
         .select(&selectors::BODY_SELECTOR)
@@ -161,7 +165,7 @@ pub fn to_chinese(input_text: &str, html: &str) -> std::result::Result<ToChinese
 }
 
 /// Parses Chinese, returns English
-pub fn to_english(input_text: &str, html: &str) -> std::result::Result<ToEnglish, Error> {
+pub(crate) fn to_english(input_text: &str, html: &str) -> std::result::Result<ToEnglish, Error> {
     let binding = Html::parse_document(html);
     let document = binding
         .select(&selectors::BODY_SELECTOR)

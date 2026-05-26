@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{Context, Result};
+use rdict_core::german::WoerterNetSource;
 use rdict_core::parse::TranslationData;
 use rdict_core::rdict::{self, Rdict};
 use std::sync::Arc;
@@ -11,9 +12,21 @@ use teloxide::{prelude::*, utils::command::BotCommands};
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    log::info!("Starting translation bot...");
+    log::info!("Starting rdict Telegram bot...");
 
-    let client = Arc::new(Rdict::new("https://m.youdao.com", None).await?);
+    let source = std::env::var("RDICT_SOURCE")
+        .unwrap_or_else(|_| "youdao".to_string());
+
+    let client = match source.as_str() {
+        "woerter-net" => {
+            let source = Box::new(WoerterNetSource::new("https://www.verbformen.com"));
+            Arc::new(Rdict::with_source(source, None).await?)
+        }
+        _ => {
+            Arc::new(Rdict::new("https://m.youdao.com", None).await?)
+        }
+    };
+
     let bot = Bot::from_env();
 
     let handler = Update::filter_message()
@@ -57,9 +70,10 @@ async fn handle_command(bot: Bot, msg: Message, cmd: Command, client: Arc<Rdict>
                 .await
                 .context("Failed to get translation results")?;
 
-            let output = match result.data {
-                TranslationData::ToChinese(tc) => rdict::render_chinese_plain(&tc),
-                TranslationData::ToEnglish(te) => rdict::render_english_plain(&te),
+            let output = match &result.data {
+                TranslationData::ToChinese(tc) => rdict::render_chinese(tc, false),
+                TranslationData::ToEnglish(te) => rdict::render_english(te, false),
+                TranslationData::German(ge) => rdict::render_german_entry(ge, false),
             };
 
             let wrapped_output = format!(
@@ -79,7 +93,6 @@ async fn handle_command(bot: Bot, msg: Message, cmd: Command, client: Arc<Rdict>
 
     let res: Result<()> = answer().await;
 
-    // TODO: Use `Dispatcher`'s `handle_error`.
     if let Err(e) = res {
         log::error!("{e}");
         bot.send_message(
